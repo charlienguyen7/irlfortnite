@@ -7,7 +7,7 @@ capture = cv2.VideoCapture(0)
 model = YOLO("yolo26n-pose.pt")
 
 while True:
-    frame = capture.read()
+    ret,frame = capture.read()
 
     results = model(frame)
     frame = results[0].plot()
