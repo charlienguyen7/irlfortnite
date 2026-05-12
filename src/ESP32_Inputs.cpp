@@ -29,8 +29,8 @@ void setup() {
 
 void loop() {
     output[0] = digitalRead(triggerPin); // read if button is being pressed    
-    output[1] = (analogRead(joyXPin) >> 4); // right shift 4-bits since gamepad input is 2^8 and ADC 2^12
-    output[2] = (analogRead(joyYPin) >> 4); // right shift 4-bits since gamepad input is 2^8 and ADC 2^12
+    output[1] = (analogRead(joyXPin) << 3); // left shift 3-bits since gamepad input is 2^15 and ADC 2^12
+    output[2] = (analogRead(joyYPin) << 3); // left shift 3-bits since gamepad input is 2^15 and ADC 2^12
     SerialBT.write(output, OUTPUTSIZE); // output array containing all data elements
     delay(20);
 }
