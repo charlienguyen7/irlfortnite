@@ -24,10 +24,11 @@ verticalState = "STANDING"
 strafeDirection = 0
 direction = "STRAIGHT"
 
-RUNNING_THRESHOLD = 0.8 # Time in seconds between left knee and right knee reaching MOVEMENT_THRESHOLD to constitute as "RUNNING"
-RUNNING_THRESHOLD_MIN = 0.1 # Minimum time discrepancy between left leg and right leg lifting; meant to prevent crouching from registering as "RUNNING"
-RUNNING_ANGLE = 170 # Angle between hips, knees, and ankle to be considered "RUNNING"
+RUNNING_THRESHOLD = 0.85 # Time in seconds between left knee and right knee reaching MOVEMENT_THRESHOLD to constitute as "RUNNING"
+RUNNING_THRESHOLD_MIN = 0.2 # Minimum time discrepancy between left leg and right leg lifting; meant to prevent crouching from registering as "RUNNING"
+RUNNING_ANGLE = 165 # Angle between hips, knees, and ankle to be considered "RUNNING"
 JUMPING_THRESHOLD = 0.6 # Normalized y-value of the knees to constitute as "JUMPING"
+STRAFE = 25000
 
 # global default controller values
 trigger = 0 # default is 0 because active-high (positive) logic
@@ -35,8 +36,9 @@ joyVX = 0x74
 joyVY = 0x7b
 joySW = 0
 
-normalizedQuad = 0
-shoulderLen = 0
+shoulderWidth = 0
+turn = 0
+hipY = 0
 
 # global variable for camera frame and joint angles
 frame = None
@@ -84,20 +86,19 @@ def serialRead():
 
 # function to display frame onto cv2
 def yoloDisplay():
-    global frame, leftAngle, rightAngle, lateralState, leftHip, leftKnee, normalizedQuad, shoulderLen, direction
+    global frame, leftAngle, rightAngle, lateralState, leftHip, leftKnee, shoulderWidth, direction, turn, hipY
     cv2.putText(frame, "Left: {:.2f}".format(leftAngle), (0,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
     cv2.putText(frame, "Right: {:.2f}".format(rightAngle), (0,75), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
     cv2.putText(frame, lateralState, (0,100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
-    cv2.putText(frame, direction, (0,300), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
-    # cv2.putText(frame, "Left Knee: {:.2f}".format(leftKnee[0]), (0,325), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
-    cv2.putText(frame, "Shoulder Len: {:.2f}".format(shoulderLen), (0,325), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
-    cv2.putText(frame, "NZD Quad: {:.2f}".format(normalizedQuad), (0,350), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+    cv2.putText(frame, direction, (0,125), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+    cv2.putText(frame, "hips: {:.2f}".format(hipY), (0,325), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+    cv2.putText(frame, "Turn Factor: {:.2f}".format(turn), (0,350), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
     printFPS()
     cv2.imshow("Livestream", frame)
 
 # function that contains YOLO prediction model
 def yoloPredict():
-    global frame, state, leftHip, leftKnee, leftAngle, rightAngle, normalizedQuad, shoulderLen
+    global frame, state, leftHip, leftKnee, leftAngle, rightAngle, shoulderWidth, turn, hipY
     while True:
         ret, frame = capture.read()
 
@@ -122,6 +123,7 @@ def yoloPredict():
             leftAnkle = keypoints[0][15]
             rightAnkle = keypoints[0][16]
 
+            # keypoints for both shoulders
             leftShoulder = keypoints[0][5]
             rightShoulder = keypoints[0][6]
 
@@ -135,14 +137,16 @@ def yoloPredict():
             r2 = math.pow(rightAnkle[0]-rightKnee[0], 2) + math.pow(rightAnkle[1]-rightKnee[1], 2)
             r3 = math.pow(rightHip[0]-rightAnkle[0], 2) + math.pow(rightHip[1]-rightAnkle[1], 2)
 
-            # length of torso
-            mid_shoulder_y = (leftShoulder[1] + rightShoulder[1]) / 2
-            mid_hip_y = (leftHip[1] + rightHip[1]) / 2
-            torso_height = abs(mid_shoulder_y - mid_hip_y)
+            # length of torso height
+            shoulderY = (leftShoulder[1]+rightShoulder[1])/2
+            hipY = (leftHip[1]+rightHip[1])/2
+            torsoHeight = abs(shoulderY-hipY)
 
-            # length of shoulders
-            shoulderLen = math.sqrt((math.pow(leftShoulder[0]-rightShoulder[0], 2) + math.pow(leftShoulder[1]-rightShoulder[1],2)) / torso_height) * 100
-            normalizedQuad = (leftKnee[0] - leftHip[0])/l1
+            # length of shoulders normalized to torso height
+            shoulderWidth = math.sqrt((math.pow(leftShoulder[0]-rightShoulder[0], 2) + math.pow(leftShoulder[1]-rightShoulder[1],2)) / torsoHeight)
+
+            # average x-displacement of knees from hip normalized by avg length of thighs
+            turn = (leftKnee[0]-leftHip[0]+rightKnee[0]-rightHip[0])/((l1+r1)/2)
 
             # Law of Cosine to calculate angle between hip, knee, and ankle
             try:
@@ -161,7 +165,7 @@ def yoloPredict():
 
 # function that checks YOLO pose keypoints and determines state of player (i.e. jumping, running)
 def movementState():
-    global lateralState, verticalState, leftHip, leftKnee, strafeDirection, normalizedQuad, shoulderLen, direction
+    global lateralState, verticalState, leftHip, leftKnee, strafeDirection, turn, shoulderWidth, direction, hipY
     leftLegTime = 0
     rightLegTime = 0
     timeOfActivity = 0
@@ -181,24 +185,32 @@ def movementState():
 
         if leftStepSeen and rightStepSeen:
             runningTime = abs(leftLegTime - rightLegTime)
-            print("BOTH DETECTED dt:", runningTime)
             if RUNNING_THRESHOLD_MIN < runningTime < RUNNING_THRESHOLD:
                 lateralState = "RUNNING"
                 timeOfActivity = time.time()
             leftStepSeen = False
             rightStepSeen = False
         
-        if shoulderLen < 7:
-            if normalizedQuad > 1:
-                strafeDirection = -25000
+        # check if player is rotated by assessing width of shoulder
+        if shoulderWidth < 0.25:
+            # check direction turned by checking average x-displacement from both knees to hips
+            if turn > 1:
+                strafeDirection = -STRAFE
                 direction = "LEFT"
-            if normalizedQuad < -1:
-                strafeDirection = 25000
+            if turn < -1:
+                strafeDirection = STRAFE
                 direction = "RIGHT"
         else:
             strafeDirection = 0
             direction = "STRAIGHT"
-        
+
+        if hipY < 0.4:
+            verticalState = "JUMPING"
+            if lateralState == "RUNNING":
+                timeOfActivity = time.time()
+        else:
+            verticalState = "STANDING"
+
         if time.time() - timeOfActivity > RUNNING_THRESHOLD:
             lateralState = "STANDING"
 
@@ -214,9 +226,12 @@ def gamepadInput():
         
         if verticalState == "JUMPING":
             gamepad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
-        elif lateralState == "STANDING":
+        else:
+            gamepad.release_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
+
+        if lateralState == "STANDING":
             gamepad.left_joystick(0,0)
-        elif lateralState == "RUNNING":
+        if lateralState == "RUNNING":
             gamepad.left_joystick(strafeDirection, 32767)
 
         # if pressed trigger, shoot gun
