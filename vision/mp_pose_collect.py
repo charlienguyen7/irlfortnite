@@ -27,7 +27,7 @@ def features_data(result):
     if not result.pose_landmarks:
         return None
     data = []
-    for landmarker in result.pose_landmarks[0]:
+    for landmarker in result.pose_landmarks[0][23:33]:
         data.append(landmarker.x)
         data.append(landmarker.y)
         data.append(landmarker.z)
@@ -89,7 +89,8 @@ with PoseLandmarker.create_from_options(options) as landmarker:
             print(len(sequence))
             if len(sequence) == SEQUENCE_LENGTH:
                 print("Done")
-                np.save(f"training_data/jumping_{sample_count}.npy", sequence)
+                print(sequence)
+                np.save(f"training_data/running_{sample_count}.npy", sequence)
                 sample_count += 1
                 recording = False
                 sequence = []

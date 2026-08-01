@@ -7,7 +7,7 @@ Push this code onto your ESP32
 
 BluetoothSerial SerialBT;
 
-const int triggerPin = 4; // GPIO pin connected to the trigger (button)
+const int triggerPin = 2; // GPIO pin connected to the trigger (button)
 const int joyXPin = 32; // GPIO pin connected to Vx of joystick (ADC)
 const int joyYPin = 33; // GPIO pin connected to Vy of joystick (ADC)
 const int joySWPin = 25;
@@ -21,12 +21,12 @@ uint8_t output[OUTPUTSIZE]; // array containing outputs to be sent through Bluet
 
 void setup() {
     Serial.begin(115200);
-    SerialBT.begin("ESP32_Shotgun"); // Bluetooth device name
+    SerialBT.begin("ESP32 Shotgun"); // Bluetooth device name
     Serial.println("Pair with Bluetooth to Activate");
 
     pinMode(triggerPin, INPUT); // Set trigger pin as input (I'm using external pulldown resistor; otherwise use INPUT_PULLDOWN)
     pinMode(joyXPin, INPUT); // Set joystick Vx pin as input
-    pinMode(joyYPin, INPUT); // Set joystick Vy pin as input
+    pinMode(joyYPin, INPUT); // Set joystick Vy pin as input-------
     pinMode(joySWPin, INPUT_PULLUP);
 }
 

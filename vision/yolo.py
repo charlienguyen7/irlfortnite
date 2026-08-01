@@ -53,7 +53,7 @@ rightAngle = 0
 gamepad = vg.VX360Gamepad()
 
 # set up camera stream
-capture = cv2.VideoCapture(1)
+capture = cv2.VideoCapture(0)
 capture.set(cv2.CAP_PROP_FRAME_WIDTH, CAM_WIDTH)
 capture.set(cv2.CAP_PROP_FRAME_HEIGHT, CAM_HEIGHT)
 
