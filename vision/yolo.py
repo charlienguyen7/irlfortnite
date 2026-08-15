@@ -222,17 +222,17 @@ def movementState():
 def gamepadInput():
     global gamepad, lateralState, verticalState, strafeDirection, trigger, joyVX, joyVY, joySW
     while True:
-        gamepad.right_joystick(joyVX, joyVY)
+        gamepad.right_joystick(joyVY, joyVX)
         
         if verticalState == "JUMPING":
             gamepad.press_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
         else:
             gamepad.release_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
 
-        if lateralState == "STANDING":
-            gamepad.left_joystick(0,0)
-        if lateralState == "RUNNING":
-            gamepad.left_joystick(strafeDirection, 32767)
+        # if lateralState == "STANDING":
+        #     gamepad.left_joystick(0,0)
+        # if lateralState == "RUNNING":
+        #     gamepad.left_joystick(strafeDirection, 32767)
 
         # if pressed trigger, shoot gun
         if trigger:
