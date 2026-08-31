@@ -26,7 +26,7 @@ void setup() {
 
     pinMode(triggerPin, INPUT); // Set trigger pin as input (I'm using external pulldown resistor; otherwise use INPUT_PULLDOWN)
     pinMode(joyXPin, INPUT); // Set joystick Vx pin as input
-    pinMode(joyYPin, INPUT); // Set joystick Vy pin as input-------
+    pinMode(joyYPin, INPUT); // Set joystick Vy pin as input
     pinMode(joySWPin, INPUT_PULLUP);
 }
 

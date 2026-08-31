@@ -82,7 +82,7 @@ def serialRead():
         joyVX = (serialData[1] << 8) - 32768 # gamepad joystick takes in values from -32768 and 32767; serialData[1] is a uint8_t
         joyVY = (serialData[2] << 8) - 32768 # gamepad joystick takes in values from -32768 and 32767; serialData[1] is a uint8_t
         joySW = not serialData[3]
-        # print(trigger," ",joyVX," ",joyVY," ",joySW)
+        print(trigger," ",joyVX," ",joyVY," ",joySW)
 
 # function to display frame onto cv2
 def yoloDisplay():
@@ -90,9 +90,9 @@ def yoloDisplay():
     cv2.putText(frame, "Left: {:.2f}".format(leftAngle), (0,50), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
     cv2.putText(frame, "Right: {:.2f}".format(rightAngle), (0,75), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
     cv2.putText(frame, lateralState, (0,100), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
-    cv2.putText(frame, direction, (0,125), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
-    cv2.putText(frame, "hips: {:.2f}".format(hipY), (0,325), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
-    cv2.putText(frame, "Turn Factor: {:.2f}".format(turn), (0,350), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+    # cv2.putText(frame, direction, (0,125), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+    # cv2.putText(frame, "hips: {:.2f}".format(hipY), (0,325), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
+    # cv2.putText(frame, "Turn Factor: {:.2f}".format(turn), (0,350), cv2.FONT_HERSHEY_SIMPLEX, 1, (255,255,255), 2)
     printFPS()
     cv2.imshow("Livestream", frame)
 
@@ -165,10 +165,10 @@ def yoloPredict():
 
 # function that checks YOLO pose keypoints and determines state of player (i.e. jumping, running)
 def movementState():
-    global lateralState, verticalState, leftHip, leftKnee, strafeDirection, turn, shoulderWidth, direction, hipY
+    global lateralState, rightAngle, leftAngle
     leftLegTime = 0
     rightLegTime = 0
-    timeOfActivity = 0
+    timeOfActivity = time.time()
     leftStepSeen = False
     rightStepSeen = False
     while True:
@@ -190,26 +190,6 @@ def movementState():
                 timeOfActivity = time.time()
             leftStepSeen = False
             rightStepSeen = False
-        
-        # check if player is rotated by assessing width of shoulder
-        if shoulderWidth < 0.25:
-            # check direction turned by checking average x-displacement from both knees to hips
-            if turn > 1:
-                strafeDirection = -STRAFE
-                direction = "LEFT"
-            if turn < -1:
-                strafeDirection = STRAFE
-                direction = "RIGHT"
-        else:
-            strafeDirection = 0
-            direction = "STRAIGHT"
-
-        if hipY < 0.4:
-            verticalState = "JUMPING"
-            if lateralState == "RUNNING":
-                timeOfActivity = time.time()
-        else:
-            verticalState = "STANDING"
 
         if time.time() - timeOfActivity > RUNNING_THRESHOLD:
             lateralState = "STANDING"
@@ -229,10 +209,10 @@ def gamepadInput():
         else:
             gamepad.release_button(vg.XUSB_BUTTON.XUSB_GAMEPAD_A)
 
-        # if lateralState == "STANDING":
-        #     gamepad.left_joystick(0,0)
-        # if lateralState == "RUNNING":
-        #     gamepad.left_joystick(strafeDirection, 32767)
+        if lateralState == "STANDING":
+            gamepad.left_joystick(0,0)
+        if lateralState == "RUNNING":
+            gamepad.left_joystick(strafeDirection, 32767)
 
         # if pressed trigger, shoot gun
         if trigger:
